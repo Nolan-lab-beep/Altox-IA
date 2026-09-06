@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Régisseur — le chat IA que tu joues toi-même</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#12182B">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --marquee-bg:#12182B; --marquee-panel:#1B2340; --marquee-panel-2:#232B4A;
+    --marquee-gold:#E8B33D; --marquee-ivory:#F1EEE3; --marquee-rose:#3E2A3B; --marquee-muted:#8890B0;
+    --stage-bg:#16181B; --stage-panel:#1F2226; --stage-panel-2:#26292E;
+    --stage-amber:#FFB454; --stage-text:#E7E3DA; --stage-muted:#8B8F94; --stage-red:#E0654F;
+    --serif:'Fraunces', Georgia, serif; --sans:'IBM Plex Sans', -apple-system, sans-serif; --mono:'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; font-family:var(--sans);}
+  body{background:var(--marquee-bg); color:var(--marquee-ivory);}
+  body.backstage{background:var(--stage-bg); color:var(--stage-text);}
+  #app{min-height:100vh; display:flex; flex-direction:column; max-width:520px; margin:0 auto; position:relative;}
+  button{font-family:var(--sans); cursor:pointer; border:none;}
+  input, textarea{font-family:var(--sans);}
+  ::selection{background:var(--marquee-gold); color:#12182B;}
+  a{color:inherit;}
+
+  .center-screen{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; text-align:center; gap:18px;}
+  .muted{color:var(--marquee-muted); font-size:13px; line-height:1.5;}
+  .backstage .muted{color:var(--stage-muted);}
+  .field{width:100%; max-width:320px; text-align:left;}
+  .field label{display:block; font-size:12px; color:var(--marquee-muted); margin-bottom:6px;}
+  .backstage .field label{color:var(--stage-muted);}
+  .field input{width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.14); background:var(--marquee-panel); color:var(--marquee-ivory); font-size:15px;}
+  .backstage .field input{background:var(--stage-panel-2); border-color:rgba(255,255,255,.1); color:var(--stage-text);}
+  .field input:focus{outline:2px solid var(--marquee-gold); outline-offset:1px;}
+  .backstage .field input:focus{outline-color:var(--stage-amber);}
+  .btn-primary{background:var(--marquee-gold); color:#1A1305; font-weight:600; padding:13px 22px; border-radius:10px; font-size:15px; width:100%; max-width:320px;}
+  .backstage .btn-primary{background:var(--stage-amber); color:#241503;}
+  .btn-primary:disabled{opacity:.5; cursor:default;}
+  .btn-ghost{background:transparent; color:var(--marquee-muted); font-size:13px; text-decoration:underline; padding:8px;}
+  .backstage .btn-ghost{color:var(--stage-muted);}
+  .link-small{background:none; color:var(--marquee-muted); font-size:12px; padding:6px; text-decoration:underline; position:fixed; bottom:10px; left:50%; transform:translateX(-50%);}
+
+  .marquee{padding:22px 20px 16px; text-align:center; position:relative; border-bottom:1px solid rgba(255,255,255,.08);}
+  .bulbs{display:flex; justify-content:center; gap:7px; margin-bottom:10px;}
+  .bulb{width:6px; height:6px; border-radius:50%; background:#4A4426; box-shadow:0 0 0 rgba(232,179,61,0);}
+  .bulb.on{background:var(--marquee-gold); box-shadow:0 0 8px var(--marquee-gold);}
+  .bulb.pulse{animation:bulbpulse 1.4s ease-in-out infinite;}
+  .bulb:nth-child(2n).pulse{animation-delay:.2s;} .bulb:nth-child(3n).pulse{animation-delay:.4s;}
+  @keyframes bulbpulse{0%,100%{opacity:.35;} 50%{opacity:1;}}
+  .ai-name{font-family:var(--serif); font-size:28px; font-weight:600; letter-spacing:.5px; margin:0;}
+  .ai-tag{font-size:12px; color:var(--marquee-muted); margin-top:4px;}
+
+  .thread{flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:12px;}
+  .bubble-row{display:flex;}
+  .bubble-row.me{justify-content:flex-end;}
+  .bubble{max-width:78%; padding:11px 14px; border-radius:16px; font-size:14.5px; line-height:1.45; white-space:pre-wrap;}
+  .bubble img{max-width:100%; border-radius:10px; display:block;}
+  .bubble.other{background:var(--marquee-panel-2); border-bottom-left-radius:4px;}
+  .bubble.me{background:var(--marquee-rose); border-bottom-right-radius:4px;}
+  .backstage .bubble.other{background:var(--stage-panel-2); border-bottom-left-radius:4px;}
+  .backstage .bubble.me{background:#3A2E1A; border-bottom-right-radius:4px;}
+  .bubble-time{font-size:10px; color:var(--marquee-muted); margin-top:4px;}
+  .backstage .bubble-time{color:var(--stage-muted);}
+  .thinking{font-size:12px; color:var(--marquee-gold); font-style:italic; padding:0 16px;}
+
+  .composer{display:flex; gap:8px; padding:14px 16px; padding-bottom:calc(14px + env(safe-area-inset-bottom)); border-top:1px solid rgba(255,255,255,.08); background:var(--marquee-bg);}
+  .backstage .composer{background:var(--stage-bg);}
+  .composer textarea{flex:1; resize:none; border-radius:14px; padding:11px 14px; border:1px solid rgba(255,255,255,.14); background:var(--marquee-panel); color:var(--marquee-ivory); font-size:14.5px; max-height:100px;}
+  .backstage .composer textarea{background:var(--stage-panel-2); border-color:rgba(255,255,255,.1); color:var(--stage-text);}
+  .composer textarea:focus{outline:none; border-color:var(--marquee-gold);}
+  .backstage .composer textarea:focus{border-color:var(--stage-amber);}
+  .send-btn{width:44px; border-radius:12px; background:var(--marquee-gold); color:#1A1305; font-size:18px;}
+  .backstage .send-btn{background:var(--stage-amber); color:#241503;}
+  .send-btn:disabled{opacity:.4;}
+
+  .console-header{padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; align-items:center; justify-content:space-between;}
+  .console-title{font-family:var(--mono); font-size:13px; letter-spacing:.5px; color:var(--stage-muted);}
+  .conv-list{flex:1; overflow-y:auto; padding:6px 0;}
+  .conv-row{display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,.06);}
+  .conv-row:active{background:rgba(255,255,255,.04);}
+  .conv-avatar{width:36px; height:36px; border-radius:50%; background:var(--stage-panel-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:14px; flex-shrink:0;}
+  .conv-info{flex:1; min-width:0;}
+  .conv-name{font-size:14.5px; font-weight:500;}
+  .conv-preview{font-size:12.5px; color:var(--stage-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .badge-pending{background:var(--stage-red); color:#1A0805; font-family:var(--mono); font-size:10px; padding:3px 7px; border-radius:20px; flex-shrink:0;}
+  .empty-state{flex:1; display:flex; align-items:center; justify-content:center; color:var(--stage-muted); font-size:13px; padding:40px; text-align:center;}
+  .back-btn{background:none; color:var(--stage-muted); font-size:14px; padding:6px 8px;}
+
+  .thread-header{padding:14px 18px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; align-items:center; gap:10px;}
+  .thread-header .name{font-size:15px; font-weight:500; flex:1;}
+  .delete-btn{background:none; color:var(--stage-red); font-size:12px; padding:6px;}
+
+  .ai-assist-row{display:flex; gap:8px; padding:0 16px 10px;}
+  .chip{font-family:var(--mono); font-size:11.5px; padding:7px 12px; border-radius:8px; background:var(--stage-panel-2); color:var(--stage-amber); border:1px solid rgba(255,180,84,.25);}
+  .chip:disabled{opacity:.4;}
+  .chip.draw{color:#7CC7FF; border-color:rgba(124,199,255,.25);}
+
+  .role-card{width:100%; max-width:340px; padding:20px; border-radius:14px; background:var(--marquee-panel); border:1px solid rgba(255,255,255,.1); text-align:left;}
+  .role-card h3{font-family:var(--serif); margin:0 0 6px; font-size:19px;}
+  .role-card p{margin:0 0 14px;}
+
+  .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:flex-end; justify-content:center; z-index:50;}
+  .modal-sheet{background:var(--stage-panel); width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px; display:flex; flex-direction:column; gap:10px;}
+  .modal-sheet h4{margin:0; font-size:14px; font-family:var(--mono); color:var(--stage-muted); font-weight:400;}
+  canvas{background:#fff; border-radius:10px; touch-action:none; width:100%; height:260px;}
+  .draw-tools{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .swatch{width:26px; height:26px; border-radius:50%; border:2px solid transparent;}
+  .swatch.active{border-color:var(--stage-amber);}
+  .modal-actions{display:flex; gap:8px;}
+  .modal-actions button{flex:1; padding:11px; border-radius:10px; font-size:13.5px;}
+  .btn-cancel{background:var(--stage-panel-2); color:var(--stage-text);}
+  .btn-send{background:var(--stage-amber); color:#241503; font-weight:600;}
+
+  .spinner{width:14px; height:14px; border-radius:50%; border:2px solid rgba(255,255,255,.25); border-top-color:currentColor; animation:spin .7s linear infinite; display:inline-block; vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:10px 16px; border-radius:20px; font-size:12.5px; z-index:60; opacity:.95;}
+  code{background:rgba(255,255,255,.08); padding:1px 5px; border-radius:4px; font-family:var(--mono); font-size:12px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   1) CONFIGURATION — colle ici la config de TON projet Firebase
+   (Console Firebase → Paramètres du projet → Tes applications → SDK config)
+   Voir README.md pour la marche à suivre pas à pas (gratuit, 5 min).
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "COLLE_TA_CLE_ICI",
+  authDomain: "TON-PROJET.firebaseapp.com",
+  projectId: "TON-PROJET",
+  storageBucket: "TON-PROJET.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
+};
+
+const OPERATOR_PASSCODE = "coulisses"; // change ce mot de passe si tu veux
+/* ============================================================ */
+
+const CONFIG_MISSING = firebaseConfig.apiKey === "COLLE_TA_CLE_ICI";
+let db = null;
+if(!CONFIG_MISSING){
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+}
+
+const S = {
+  view: 'loading', myUsername: null, myConv: null,
+  operatorAuthed: false, dashboard: [], openConvUsername: null,
+  drawColor: '#16181B', unsubClient: null, unsubDash: null, unsubThread: null,
+};
+
+const app = document.getElementById('app');
+function setBodyTheme(theme){ document.body.className = theme; }
+function esc(s){ return (s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function timeStr(ts){ return new Date(ts).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }
+function showToast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 2400);
+}
+function unsubAll(){
+  [S.unsubClient, S.unsubDash, S.unsubThread].forEach(u => { if(u) u(); });
+  S.unsubClient = S.unsubDash = S.unsubThread = null;
+}
+
+/* ---------------- Firestore helpers ---------------- */
+const convRef = (username) => db.collection('conversations').doc(username);
+async function getConv(username){
+  try{ const d = await convRef(username).get(); return d.exists ? d.data() : null; }catch(e){ return null; }
+}
+async function saveConv(conv){
+  try{ await convRef(conv.username).set(conv); return true; }
+  catch(e){ showToast("Erreur de sauvegarde, réessaie."); return false; }
+}
+async function deleteConv(username){
+  try{ await convRef(username).delete(); }catch(e){}
+}
+
+/* ---------------- init ---------------- */
+async function init(){
+  if(CONFIG_MISSING){ S.view = 'setup-needed'; render(); return; }
+  const mine = localStorage.getItem('my-username');
+  if(mine){
+    const conv = await getConv(mine);
+    if(conv){ S.myUsername = mine; S.myConv = conv; S.view = 'client-chat'; render(); listenClient(); return; }
+  }
+  S.view = 'role-chooser';
+  render();
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+}
+
+/* ---------------- RENDER ROOT ---------------- */
+function render(){
+  if(S.view === 'loading'){ setBodyTheme('stage'); app.innerHTML = `<div class="center-screen"><span class="spinner"></span></div>`; return; }
+  if(S.view === 'setup-needed') return renderSetupNeeded();
+  if(S.view === 'role-chooser') return renderRoleChooser();
+  if(S.view === 'client-setup') return renderClientSetup();
+  if(S.view === 'client-chat') return renderClientChat();
+  if(S.view === 'operator-gate') return renderOperatorGate();
+  if(S.view === 'operator-dashboard') return renderOperatorDashboard();
+  if(S.view === 'operator-thread') return renderOperatorThread();
+}
+
+function renderSetupNeeded(){
+  setBodyTheme('stage');
+  app.innerHTML = `
+    <div class="center-screen">
+      <h1 style="font-family:var(--serif); font-size:24px; margin:0;">Encore une étape</h1>
+      <p class="muted" style="max-width:320px;">Il manque la config Firebase dans <code>index.html</code> (la partie <code>firebaseConfig</code> tout en haut du script). Suis le <b>README.md</b> fourni — 5 minutes, gratuit — puis recharge la page.</p>
+    </div>`;
+}
+
+/* ---------------- ROLE CHOOSER ---------------- */
+function renderRoleChooser(){
+  setBodyTheme('stage');
+  app.innerHTML = `
+    <div class="center-screen">
+      <p class="muted" style="font-family:var(--mono); letter-spacing:1px; text-transform:uppercase; font-size:11px;">avant le lever de rideau</p>
+      <h1 style="font-family:var(--serif); font-size:26px; margin:0 0 4px;">Qui es-tu ce soir ?</h1>
+      <div class="role-card">
+        <h3>Le public</h3>
+        <p class="muted">Tu arrives, tu crées un compte, et tu discutes avec « l'IA ».</p>
+        <button class="btn-primary" onclick="S.view='client-setup'; render();">Entrer dans la salle</button>
+      </div>
+      <div class="role-card">
+        <h3>Le régisseur</h3>
+        <p class="muted">C'est toi qui réponds à la place de l'IA, en coulisses.</p>
+        <button class="btn-primary" onclick="S.view='operator-gate'; render();" style="background:var(--stage-amber); color:#241503;">Aller en coulisses</button>
+      </div>
+    </div>`;
+}
+
+/* ---------------- CLIENT SETUP ---------------- */
+function renderClientSetup(){
+  setBodyTheme('stage');
+  app.innerHTML = `
+    <div class="center-screen">
+      <div class="bulbs">${[1,2,3,4,5].map(()=>'<div class="bulb on"></div>').join('')}</div>
+      <h1 style="font-family:var(--serif); font-size:26px; margin:0;">Fais connaissance</h1>
+      <p class="muted">Choisis un pseudo, et donne un nom à l'IA à qui tu vas parler.</p>
+      <div class="field"><label>Ton pseudo</label><input id="in-user" maxlength="20" placeholder="ex : lucie92"></div>
+      <div class="field"><label>Le nom de l'IA</label><input id="in-ai" maxlength="20" placeholder="ex : Nova" value="Nova"></div>
+      <p class="muted" id="setup-error" style="color:var(--stage-red); min-height:16px;"></p>
+      <button class="btn-primary" id="setup-btn" onclick="createAccount()">Commencer à discuter</button>
+      <button class="btn-ghost" onclick="S.view='role-chooser'; render();">← retour</button>
+    </div>`;
+}
+
+async function createAccount(){
+  const username = document.getElementById('in-user').value.trim();
+  const aiName = document.getElementById('in-ai').value.trim() || 'Nova';
+  const errEl = document.getElementById('setup-error');
+  const btn = document.getElementById('setup-btn');
+  if(!username){ errEl.textContent = 'Choisis un pseudo.'; return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const existing = await getConv(username);
+  if(existing){
+    errEl.textContent = 'Ce pseudo est déjà pris, choisis-en un autre.';
+    btn.disabled = false; btn.textContent = 'Commencer à discuter';
+    return;
+  }
+  const conv = { username, aiName, status:'answered', messages:[
+    {id:crypto.randomUUID(), role:'ai', type:'text', content:`Salut ${username}, je suis ${aiName}. Pose-moi une question !`, ts:Date.now()}
+  ]};
+  const ok = await saveConv(conv);
+  if(!ok){ btn.disabled=false; btn.textContent='Commencer à discuter'; return; }
+  localStorage.setItem('my-username', username);
+  S.myUsername = username; S.myConv = conv; S.view = 'client-chat';
+  render(); listenClient();
+}
+
+/* ---------------- CLIENT CHAT (temps réel) ---------------- */
+function listenClient(){
+  unsubAll();
+  S.unsubClient = convRef(S.myUsername).onSnapshot((doc) => {
+    if(!doc.exists) return;
+    S.myConv = doc.data();
+    if(S.view === 'client-chat') renderClientChat();
+  });
+}
+
+function renderClientChat(){
+  setBodyTheme('stage');
+  const conv = S.myConv;
+  const pending = conv.status === 'pending';
+  app.innerHTML = `
+    <div class="marquee">
+      <div class="bulbs">${[1,2,3,4,5].map(()=>`<div class="bulb on ${pending?'pulse':''}"></div>`).join('')}</div>
+      <p class="ai-name">${esc(conv.aiName)}</p>
+      <p class="ai-tag">connecté(e) en tant que ${esc(conv.username)}</p>
+    </div>
+    <div class="thread" id="thread">
+      ${conv.messages.map(m => bubbleHTML(m, m.role==='user')).join('')}
+    </div>
+    ${pending ? `<p class="thinking">${esc(conv.aiName)} est en train d'écrire…</p>` : ''}
+    <div class="composer">
+      <textarea id="client-input" rows="1" placeholder="Écris ton message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendClientMessage();}"></textarea>
+      <button class="send-btn" onclick="sendClientMessage()">↑</button>
+    </div>
+    <button class="link-small" onclick="resetClientAccount()">réinitialiser mon compte</button>`;
+  const th = document.getElementById('thread'); if(th) th.scrollTop = th.scrollHeight;
+}
+
+function bubbleHTML(m, mine){
+  const body = m.type === 'image' ? `<img src="${m.content}" alt="dessin">` : esc(m.content);
+  return `<div class="bubble-row ${mine?'me':''}">
+      <div>
+        <div class="bubble ${mine?'me':'other'}">${body}</div>
+        <div class="bubble-time" style="text-align:${mine?'right':'left'}">${timeStr(m.ts)}</div>
+      </div>
+    </div>`;
+}
+
+async function sendClientMessage(){
+  const input = document.getElementById('client-input');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  S.myConv.messages.push({id:crypto.randomUUID(), role:'user', type:'text', content:text, ts:Date.now()});
+  S.myConv.status = 'pending';
+  renderClientChat();
+  await saveConv(S.myConv);
+}
+
+async function resetClientAccount(){
+  if(!confirm("Supprimer ton compte et repartir de zéro ?")) return;
+  unsubAll();
+  await deleteConv(S.myUsername);
+  localStorage.removeItem('my-username');
+  S.myUsername = null; S.myConv = null; S.view = 'role-chooser';
+  render();
+}
+
+/* ---------------- OPERATOR GATE ---------------- */
+function renderOperatorGate(){
+  setBodyTheme('backstage');
+  app.innerHTML = `
+    <div class="center-screen">
+      <p class="muted" style="font-family:var(--mono); letter-spacing:1px; text-transform:uppercase; font-size:11px;">accès restreint</p>
+      <h1 style="font-family:var(--serif); font-size:24px; margin:0;">Coulisses</h1>
+      <div class="field"><label>Code d'accès</label><input id="passcode" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPasscode()"></div>
+      <p class="muted" id="gate-error" style="color:var(--stage-red); min-height:16px;"></p>
+      <button class="btn-primary" onclick="checkPasscode()">Entrer</button>
+      <button class="btn-ghost" onclick="S.view='role-chooser'; render();">← retour</button>
+      <p class="muted" style="max-width:280px;">Note : ce code n'est qu'un filtre simple, pas une vraie sécurité — n'y mets rien de confidentiel.</p>
+    </div>`;
+}
+function checkPasscode(){
+  const val = document.getElementById('passcode').value;
+  if(val === OPERATOR_PASSCODE){
+    S.operatorAuthed = true; S.view = 'operator-dashboard'; render(); listenDashboard();
+  } else {
+    document.getElementById('gate-error').textContent = 'Code incorrect.';
+  }
+}
+
+/* ---------------- OPERATOR DASHBOARD (temps réel) ---------------- */
+function listenDashboard(){
+  unsubAll();
+  S.unsubDash = db.collection('conversations').onSnapshot((snap) => {
+    const convs = snap.docs.map(d => d.data());
+    convs.sort((a,b) => {
+      if(a.status==='pending' && b.status!=='pending') return -1;
+      if(b.status==='pending' && a.status!=='pending') return 1;
+      const at = a.messages[a.messages.length-1]?.ts||0, bt = b.messages[b.messages.length-1]?.ts||0;
+      return bt-at;
+    });
+    S.dashboard = convs;
+    if(S.view === 'operator-dashboard') renderOperatorDashboard();
+  });
+}
+
+function renderOperatorDashboard(){
+  setBodyTheme('backstage');
+  const rows = S.dashboard.map(c => {
+    const last = c.messages[c.messages.length-1];
+    const preview = last ? (last.type==='image' ? '📎 dessin' : last.content) : '';
+    return `<div class="conv-row" onclick="openThread('${esc(c.username)}')">
+      <div class="conv-avatar">${esc(c.username[0]||'?').toUpperCase()}</div>
+      <div class="conv-info">
+        <div class="conv-name">${esc(c.username)} <span class="muted">→ ${esc(c.aiName)}</span></div>
+        <div class="conv-preview">${esc(preview)}</div>
+      </div>
+      ${c.status==='pending' ? '<span class="badge-pending">nouveau</span>' : ''}
+    </div>`;
+  }).join('');
+  app.innerHTML = `
+    <div class="console-header">
+      <span class="console-title">RÉGIE · ${S.dashboard.length} conversation(s)</span>
+      <button class="back-btn" onclick="unsubAll(); S.view='role-chooser'; render();">quitter</button>
+    </div>
+    <div class="conv-list">${rows || '<div class="empty-state">Personne n\\'a encore ouvert le rideau.<br>La liste se met à jour toute seule.</div>'}</div>`;
+}
+
+function openThread(username){
+  S.openConvUsername = username;
+  S.view = 'operator-thread';
+  render();
+  listenThread();
+}
+
+/* ---------------- OPERATOR THREAD (temps réel) ---------------- */
+function listenThread(){
+  if(S.unsubThread) S.unsubThread();
+  S.unsubThread = convRef(S.openConvUsername).onSnapshot((doc) => {
+    if(!doc.exists) return;
+    const idx = S.dashboard.findIndex(c => c.username === S.openConvUsername);
+    if(idx>-1) S.dashboard[idx] = doc.data(); else S.dashboard.push(doc.data());
+    if(S.view === 'operator-thread') renderOperatorThread();
+  });
+}
+
+function renderOperatorThread(){
+  setBodyTheme('backstage');
+  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  if(!conv){ app.innerHTML = `<div class="center-screen"><span class="spinner"></span></div>`; return; }
+  app.innerHTML = `
+    <div class="thread-header">
+      <button class="back-btn" onclick="if(S.unsubThread)S.unsubThread(); S.view='operator-dashboard'; render(); listenDashboard();">←</button>
+      <span class="name">${esc(conv.username)} <span class="muted">parle à ${esc(conv.aiName)}</span></span>
+      <button class="delete-btn" onclick="removeThread('${esc(conv.username)}')">supprimer</button>
+    </div>
+    <div class="thread" id="thread">
+      ${conv.messages.map(m => bubbleHTML(m, m.role==='ai')).join('')}
+    </div>
+    <div class="ai-assist-row">
+      <button class="chip" id="assist-btn" onclick="requestAISuggestion()">✨ suggérer avec l'IA</button>
+      <button class="chip draw" onclick="openDrawModal()">🖌 répondre par un dessin</button>
+    </div>
+    <div class="composer">
+      <textarea id="op-input" rows="1" placeholder="Réponds en tant que ${esc(conv.aiName)}…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendOperatorMessage();}"></textarea>
+      <button class="send-btn" onclick="sendOperatorMessage()">↑</button>
+    </div>`;
+  const th = document.getElementById('thread'); if(th) th.scrollTop = th.scrollHeight;
+}
+
+async function removeThread(username){
+  if(!confirm(`Supprimer la conversation avec ${username} ?`)) return;
+  if(S.unsubThread) S.unsubThread();
+  await deleteConv(username);
+  S.view = 'operator-dashboard'; render(); listenDashboard();
+}
+
+async function sendOperatorMessage(){
+  const input = document.getElementById('op-input');
+  const text = input.value.trim();
+  if(!text) return;
+  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  if(!conv) return;
+  conv.messages.push({id:crypto.randomUUID(), role:'ai', type:'text', content:text, ts:Date.now()});
+  conv.status = 'answered';
+  input.value = '';
+  renderOperatorThread();
+  await saveConv(conv);
+}
+
+async function requestAISuggestion(){
+  const btn = document.getElementById('assist-btn');
+  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  if(!conv) return;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> réflexion…';
+  try{
+    const history = conv.messages.filter(m=>m.type==='text').map(m=>({
+      role: m.role==='user' ? 'user' : 'assistant', content: m.content
+    }));
+    if(history.length===0 || history[history.length-1].role!=='user'){
+      showToast("Attends un message du visiteur d'abord.");
+      btn.disabled=false; btn.innerHTML='✨ suggérer avec l\\'IA'; return;
+    }
+    // Appelle notre propre fonction serverless (/api/suggest) plutôt que l'API Anthropic
+    // directement, pour ne jamais exposer de clé API dans le navigateur. Voir README.md.
+    const response = await fetch("/api/suggest", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        system: `Tu es ${conv.aiName}, un assistant IA sympathique dans une messagerie de chat. Réponds de façon naturelle, concise et utile au dernier message de l'utilisateur, comme le ferait un assistant IA. N'ajoute pas de balises ni de préambule.`,
+        messages: history
+      })
+    });
+    const data = await response.json();
+    const text = (data.content||[]).map(b=>b.text||'').join('\\n').trim();
+    const input = document.getElementById('op-input');
+    if(input) input.value = text || "(l'IA n'a rien renvoyé, réessaie)";
+  }catch(e){
+    showToast("La suggestion IA a échoué — vérifie ta connexion, ou ta clé API si tu en utilises une côté serveur.");
+  }
+  btn.disabled = false; btn.innerHTML = '✨ suggérer avec l\\'IA';
+}
+
+/* ---------------- DRAW MODAL (paint-like) ---------------- */
+function openDrawModal(){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop'; backdrop.id = 'draw-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal-sheet">
+      <h4>dessine ta réponse</h4>
+      <canvas id="paint-canvas" width="480" height="320"></canvas>
+      <div class="draw-tools">
+        ${['#16181B','#E0654F','#FFB454','#7CC7FF','#7CFFB2','#F1EEE3'].map(c=>
+          `<div class="swatch ${c===S.drawColor?'active':''}" style="background:${c}" onclick="setDrawColor('${c}', event)"></div>`).join('')}
+        <button class="chip" onclick="clearCanvas()">effacer</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeDrawModal()">annuler</button>
+        <button class="btn-send" onclick="sendDrawing()">envoyer le dessin</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+  setupCanvas();
+}
+function closeDrawModal(){ const b = document.getElementById('draw-backdrop'); if(b) b.remove(); }
+function setDrawColor(c, event){
+  S.drawColor = c; const cv=document.getElementById('paint-canvas'); if(cv) cv._ctx.strokeStyle=c;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+  if(event) event.target.classList.add('active');
+}
+function clearCanvas(){ const cv=document.getElementById('paint-canvas'); if(cv) cv._ctx.clearRect(0,0,cv.width,cv.height); }
+function setupCanvas(){
+  const cv = document.getElementById('paint-canvas');
+  const ctx = cv.getContext('2d');
+  cv._ctx = ctx;
+  ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = S.drawColor;
+  let drawing = false, last = null;
+  function pos(e){
+    const r = cv.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x:(p.clientX-r.left)*(cv.width/r.width), y:(p.clientY-r.top)*(cv.height/r.height) };
+  }
+  function start(e){ drawing=true; last=pos(e); e.preventDefault(); }
+  function move(e){
+    if(!drawing) return;
+    const p = pos(e);
+    ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+    last = p; e.preventDefault();
+  }
+  function end(){ drawing=false; }
+  cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+  cv.addEventListener('touchstart', start); cv.addEventListener('touchmove', move); cv.addEventListener('touchend', end);
+}
+async function sendDrawing(){
+  const cv = document.getElementById('paint-canvas');
+  const dataUrl = cv.toDataURL('image/png');
+  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  if(!conv) return;
+  conv.messages.push({id:crypto.randomUUID(), role:'ai', type:'image', content:dataUrl, ts:Date.now()});
+  conv.status = 'answered';
+  closeDrawModal();
+  renderOperatorThread();
+  await saveConv(conv);
+}
+
+init();
+</script>
+</body>
+</html>
