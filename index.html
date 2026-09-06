@@ -17,6 +17,8 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
 <style>
   :root{
@@ -36,7 +38,7 @@
   ::selection{background:var(--marquee-gold); color:#12182B;}
   a{color:inherit;}
 
-  .center-screen{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; text-align:center; gap:18px;}
+  .center-screen{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; text-align:center; gap:16px;}
   .muted{color:var(--marquee-muted); font-size:13px; line-height:1.5;}
   .backstage .muted{color:var(--stage-muted);}
   .field{width:100%; max-width:320px; text-align:left;}
@@ -51,9 +53,13 @@
   .btn-primary:disabled{opacity:.5; cursor:default;}
   .btn-ghost{background:transparent; color:var(--marquee-muted); font-size:13px; text-decoration:underline; padding:8px;}
   .backstage .btn-ghost{color:var(--stage-muted);}
-  .link-small{background:none; color:var(--marquee-muted); font-size:12px; padding:6px; text-decoration:underline; position:fixed; bottom:10px; left:50%; transform:translateX(-50%);}
+  .link-small{background:none; color:var(--marquee-muted); font-size:12px; padding:6px; text-decoration:underline; position:fixed; bottom:10px; left:50%; transform:translateX(-50%); z-index:20;}
 
-  .marquee{padding:22px 20px 16px; text-align:center; position:relative; border-bottom:1px solid rgba(255,255,255,.08);}
+  .tabs{display:flex; gap:6px; background:var(--marquee-panel); border-radius:12px; padding:4px; width:100%; max-width:320px;}
+  .tab-btn{flex:1; padding:9px; border-radius:9px; background:transparent; color:var(--marquee-muted); font-size:13.5px; font-weight:500;}
+  .tab-btn.active{background:var(--marquee-gold); color:#1A1305;}
+
+  .marquee{padding:22px 20px 10px; text-align:center; position:relative; border-bottom:1px solid rgba(255,255,255,.08);}
   .bulbs{display:flex; justify-content:center; gap:7px; margin-bottom:10px;}
   .bulb{width:6px; height:6px; border-radius:50%; background:#4A4426; box-shadow:0 0 0 rgba(232,179,61,0);}
   .bulb.on{background:var(--marquee-gold); box-shadow:0 0 8px var(--marquee-gold);}
@@ -62,6 +68,11 @@
   @keyframes bulbpulse{0%,100%{opacity:.35;} 50%{opacity:1;}}
   .ai-name{font-family:var(--serif); font-size:28px; font-weight:600; letter-spacing:.5px; margin:0;}
   .ai-tag{font-size:12px; color:var(--marquee-muted); margin-top:4px;}
+
+  .notif-banner{margin:10px 16px 0; padding:10px 12px; border-radius:10px; background:var(--marquee-panel-2); display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px;}
+  .backstage .notif-banner{background:var(--stage-panel-2);}
+  .notif-banner button{background:var(--marquee-gold); color:#1A1305; font-size:12px; padding:6px 10px; border-radius:7px; white-space:nowrap;}
+  .backstage .notif-banner button{background:var(--stage-amber); color:#241503;}
 
   .thread{flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:12px;}
   .bubble-row{display:flex;}
@@ -86,8 +97,9 @@
   .backstage .send-btn{background:var(--stage-amber); color:#241503;}
   .send-btn:disabled{opacity:.4;}
 
-  .console-header{padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; align-items:center; justify-content:space-between;}
+  .console-header{padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; align-items:center; justify-content:space-between; gap:8px;}
   .console-title{font-family:var(--mono); font-size:13px; letter-spacing:.5px; color:var(--stage-muted);}
+  .icon-btn{background:var(--stage-panel-2); color:var(--stage-amber); width:32px; height:32px; border-radius:9px; font-size:14px; flex-shrink:0;}
   .conv-list{flex:1; overflow-y:auto; padding:6px 0;}
   .conv-row{display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,.06);}
   .conv-row:active{background:rgba(255,255,255,.04);}
@@ -108,12 +120,9 @@
   .chip:disabled{opacity:.4;}
   .chip.draw{color:#7CC7FF; border-color:rgba(124,199,255,.25);}
 
-  .role-card{width:100%; max-width:340px; padding:20px; border-radius:14px; background:var(--marquee-panel); border:1px solid rgba(255,255,255,.1); text-align:left;}
-  .role-card h3{font-family:var(--serif); margin:0 0 6px; font-size:19px;}
-  .role-card p{margin:0 0 14px;}
-
   .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:flex-end; justify-content:center; z-index:50;}
-  .modal-sheet{background:var(--stage-panel); width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px; display:flex; flex-direction:column; gap:10px;}
+  .modal-sheet{background:var(--stage-panel); width:100%; max-width:520px; border-radius:18px 18px 0 0; padding:16px; display:flex; flex-direction:column; gap:10px; max-height:80vh; overflow-y:auto;}
+  body:not(.backstage) .modal-sheet{background:var(--marquee-panel);}
   .modal-sheet h4{margin:0; font-size:14px; font-family:var(--mono); color:var(--stage-muted); font-weight:400;}
   canvas{background:#fff; border-radius:10px; touch-action:none; width:100%; height:260px;}
   .draw-tools{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
@@ -124,10 +133,17 @@
   .btn-cancel{background:var(--stage-panel-2); color:var(--stage-text);}
   .btn-send{background:var(--stage-amber); color:#241503; font-weight:600;}
 
+  .help-item{width:100%; text-align:left; background:none; color:inherit; padding:13px 6px; font-size:14.5px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; gap:10px;}
+  .help-item:last-child{border-bottom:none;}
+  .help-item.danger{color:var(--stage-red);}
+  .help-textarea{width:100%; min-height:100px; border-radius:10px; padding:12px; border:1px solid rgba(255,255,255,.14); background:var(--stage-panel-2); color:var(--stage-text); font-size:14px; resize:vertical;}
+  body:not(.backstage) .help-textarea{background:var(--marquee-panel-2); color:var(--marquee-ivory);}
+
   .spinner{width:14px; height:14px; border-radius:50%; border:2px solid rgba(255,255,255,.25); border-top-color:currentColor; animation:spin .7s linear infinite; display:inline-block; vertical-align:middle;}
   @keyframes spin{to{transform:rotate(360deg);}}
-  .toast{position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:10px 16px; border-radius:20px; font-size:12.5px; z-index:60; opacity:.95;}
+  .toast{position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:10px 16px; border-radius:20px; font-size:12.5px; z-index:60; opacity:.95; max-width:85%; text-align:center;}
   code{background:rgba(255,255,255,.08); padding:1px 5px; border-radius:4px; font-family:var(--mono); font-size:12px;}
+  .err{color:var(--stage-red); min-height:16px; font-size:12.5px; max-width:320px;}
 </style>
 </head>
 <body>
@@ -138,40 +154,41 @@
    1) CONFIGURATION — colle ici la config de TON projet Firebase
    (Console Firebase → Paramètres du projet → Tes applications → SDK config)
    Voir README.md pour la marche à suivre pas à pas (gratuit, 5 min).
+   Active aussi "Authentication → Sign-in method → E-mail/Mot de passe".
    ============================================================ */
 const firebaseConfig = {
-
-  apiKey: "AIzaSyBM1NbSfQpQJZAYVqTcoL7xvTyDvSFpv2c",
-
-  authDomain: "altox-7c048.firebaseapp.com",
-
-  projectId: "altox-7c048",
-
-  storageBucket: "altox-7c048.firebasestorage.app",
-
-  messagingSenderId: "986483222197",
-
-  appId: "1:986483222197:web:cd92174af9e4da5cb340fc",
-
-  measurementId: "G-1MC84YG81K"
-
+  apiKey: "COLLE_TA_CLE_ICI",
+  authDomain: "TON-PROJET.firebaseapp.com",
+  projectId: "TON-PROJET",
+  storageBucket: "TON-PROJET.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
 };
 
+const OPERATOR_PASSCODE = "coulisses"; // change ce mot de passe si tu veux
 
-const OPERATOR_PASSCODE = "100823"; // change ce mot de passe si tu veux
+// Clé VAPID pour les notifications push réelles (optionnel).
+// Console Firebase → Paramètres du projet → Cloud Messaging → Web Push certificates → Générer une paire de clés.
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 /* ============================================================ */
 
-const CONFIG_MISSING = firebaseConfig.apiKey === "BArq4X0B2WMirkOmqOPjNgh4BheHX8f3dgC2A6YfZ3-KmKKrQEiudm3x-LI0UKfJF_063bocGnqYcJsvP8Gi0bE";
-let db = null;
+const CONFIG_MISSING = firebaseConfig.apiKey === "COLLE_TA_CLE_ICI";
+const VAPID_MISSING = VAPID_KEY === "COLLE_TA_CLE_VAPID_ICI";
+let db = null, auth = null;
 if(!CONFIG_MISSING){
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
+  auth = firebase.auth();
 }
 
 const S = {
-  view: 'loading', myUsername: null, myConv: null,
-  operatorAuthed: false, dashboard: [], openConvUsername: null,
-  drawColor: '#16181B', unsubClient: null, unsubDash: null, unsubThread: null,
+  view: 'loading', authMode:'signup',
+  myUid: null, myConv: null,
+  dashboard: [], dashPrevCounts: new Map(),
+  openConvUid: null,
+  drawColor: '#16181B',
+  unsubClient: null, unsubDash: null, unsubThread: null,
+  authInitialHandled: false,
 };
 
 const app = document.getElementById('app');
@@ -180,7 +197,7 @@ function esc(s){ return (s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;',
 function timeStr(ts){ return new Date(ts).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }
 function showToast(msg){
   const t = document.createElement('div'); t.className='toast'; t.textContent = msg;
-  document.body.appendChild(t); setTimeout(()=>t.remove(), 2400);
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 2600);
 }
 function unsubAll(){
   [S.unsubClient, S.unsubDash, S.unsubThread].forEach(u => { if(u) u(); });
@@ -188,37 +205,107 @@ function unsubAll(){
 }
 
 /* ---------------- Firestore helpers ---------------- */
-const convRef = (username) => db.collection('conversations').doc(username);
-async function getConv(username){
-  try{ const d = await convRef(username).get(); return d.exists ? d.data() : null; }catch(e){ return null; }
+const convRef = (uid) => db.collection('conversations').doc(uid);
+async function getConv(uid){
+  try{ const d = await convRef(uid).get(); return d.exists ? d.data() : null; }catch(e){ return null; }
 }
 async function saveConv(conv){
-  try{ await convRef(conv.username).set(conv); return true; }
+  try{ await convRef(conv.uid).set(conv); return true; }
   catch(e){ showToast("Erreur de sauvegarde, réessaie."); return false; }
 }
-async function deleteConv(username){
-  try{ await convRef(username).delete(); }catch(e){}
+async function deleteConv(uid){
+  try{ await convRef(uid).delete(); }catch(e){}
 }
 
-/* ---------------- init ---------------- */
+/* ---------------- notifications ---------------- */
+function notifBanner(context){
+  if(typeof Notification === 'undefined' || Notification.permission !== 'default') return '';
+  return `<div class="notif-banner">
+      <span>🔔 Recevoir une alerte quand un message arrive ?</span>
+      <button onclick="enableNotifs('${context}')">Activer</button>
+    </div>`;
+}
+async function enableNotifs(context){
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm === 'granted') await registerPushToken(context);
+    showToast(perm==='granted' ? "Notifications activées." : "Notifications refusées.");
+  }catch(e){ showToast("Erreur d'activation des notifications."); }
+  render();
+}
+async function registerPushToken(context){
+  // Enregistre un jeton push réel (reçu même app fermée). Sans clé VAPID configurée,
+  // seules les alertes "locales" (onglet ouvert en arrière-plan) fonctionneront.
+  if(CONFIG_MISSING || VAPID_MISSING) return;
+  try{
+    const messaging = firebase.messaging();
+    const reg = S.swRegistration || await navigator.serviceWorker.ready;
+    const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    if(!token) return;
+    if(context === 'client' && S.myUid){
+      await convRef(S.myUid).update({ fcmToken: token });
+      if(S.myConv) S.myConv.fcmToken = token;
+    } else if(context === 'operator'){
+      await db.collection('operatorTokens').doc(token).set({ token, ts: Date.now() });
+    }
+  }catch(e){ /* le jeton push est optionnel, les alertes locales suffisent en secours */ }
+}
+async function notifyOperators(username, bodyText){
+  if(CONFIG_MISSING || VAPID_MISSING) return;
+  try{
+    const snap = await db.collection('operatorTokens').get();
+    const tokens = snap.docs.map(d => d.id);
+    if(!tokens.length) return;
+    await fetch('/api/notify', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ tokens, title:'Nouveau message', body: `${username} : ${bodyText}` })
+    });
+  }catch(e){}
+}
+async function notifyClient(conv, bodyText){
+  if(CONFIG_MISSING || VAPID_MISSING || !conv.fcmToken) return;
+  try{
+    await fetch('/api/notify', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ tokens:[conv.fcmToken], title: conv.aiName, body: bodyText })
+    });
+  }catch(e){}
+}
+function maybeNotify(title, body){
+  if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if(!document.hidden) return;
+  try{ new Notification(title, {body, icon:'./icons/icon-192.png'}); }catch(e){}
+}
+
+/* ---------------- init / auth ---------------- */
 async function init(){
   if(CONFIG_MISSING){ S.view = 'setup-needed'; render(); return; }
-  const mine = localStorage.getItem('my-username');
-  if(mine){
-    const conv = await getConv(mine);
-    if(conv){ S.myUsername = mine; S.myConv = conv; S.view = 'client-chat'; render(); listenClient(); return; }
+  if('serviceWorker' in navigator){
+    try{ S.swRegistration = await navigator.serviceWorker.register('./sw.js'); }catch(e){}
   }
-  S.view = 'role-chooser';
-  render();
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+  auth.onAuthStateChanged(async (user) => {
+    if(user){
+      await loadClientSession(user);
+    } else if(!['operator-gate','operator-dashboard','operator-thread'].includes(S.view)){
+      unsubAll();
+      S.view = 'auth'; render();
+    }
+    S.authInitialHandled = true;
+  });
+}
+
+async function loadClientSession(user){
+  S.myUid = user.uid;
+  const conv = await getConv(user.uid);
+  if(!conv){ showToast("Profil introuvable."); return; }
+  S.myConv = conv; S.view = 'client-chat'; render(); listenClient();
 }
 
 /* ---------------- RENDER ROOT ---------------- */
 function render(){
   if(S.view === 'loading'){ setBodyTheme('stage'); app.innerHTML = `<div class="center-screen"><span class="spinner"></span></div>`; return; }
   if(S.view === 'setup-needed') return renderSetupNeeded();
-  if(S.view === 'role-chooser') return renderRoleChooser();
-  if(S.view === 'client-setup') return renderClientSetup();
+  if(S.view === 'auth') return renderAuth();
   if(S.view === 'client-chat') return renderClientChat();
   if(S.view === 'operator-gate') return renderOperatorGate();
   if(S.view === 'operator-dashboard') return renderOperatorDashboard();
@@ -234,71 +321,107 @@ function renderSetupNeeded(){
     </div>`;
 }
 
-/* ---------------- ROLE CHOOSER ---------------- */
-function renderRoleChooser(){
+/* ---------------- AUTH SCREEN ---------------- */
+function renderAuth(){
   setBodyTheme('stage');
-  app.innerHTML = `
-    <div class="center-screen">
-      <p class="muted" style="font-family:var(--mono); letter-spacing:1px; text-transform:uppercase; font-size:11px;">avant le lever de rideau</p>
-      <h1 style="font-family:var(--serif); font-size:26px; margin:0 0 4px;">Qui es-tu ce soir ?</h1>
-      <div class="role-card">
-        <h3>Le public</h3>
-        <p class="muted">Tu arrives, tu crées un compte, et tu discutes avec « l'IA ».</p>
-        <button class="btn-primary" onclick="S.view='client-setup'; render();">Entrer dans la salle</button>
-      </div>
-      <div class="role-card">
-        <h3>Le régisseur</h3>
-        <p class="muted">C'est toi qui réponds à la place de l'IA, en coulisses.</p>
-        <button class="btn-primary" onclick="S.view='operator-gate'; render();" style="background:var(--stage-amber); color:#241503;">Aller en coulisses</button>
-      </div>
-    </div>`;
-}
-
-/* ---------------- CLIENT SETUP ---------------- */
-function renderClientSetup(){
-  setBodyTheme('stage');
+  const isSignup = S.authMode === 'signup';
   app.innerHTML = `
     <div class="center-screen">
       <div class="bulbs">${[1,2,3,4,5].map(()=>'<div class="bulb on"></div>').join('')}</div>
-      <h1 style="font-family:var(--serif); font-size:26px; margin:0;">Fais connaissance</h1>
-      <p class="muted">Choisis un pseudo, et donne un nom à l'IA à qui tu vas parler.</p>
-      <div class="field"><label>Ton pseudo</label><input id="in-user" maxlength="20" placeholder="ex : lucie92"></div>
-      <div class="field"><label>Le nom de l'IA</label><input id="in-ai" maxlength="20" placeholder="ex : Nova" value="Nova"></div>
-      <p class="muted" id="setup-error" style="color:var(--stage-red); min-height:16px;"></p>
-      <button class="btn-primary" id="setup-btn" onclick="createAccount()">Commencer à discuter</button>
-      <button class="btn-ghost" onclick="S.view='role-chooser'; render();">← retour</button>
-    </div>`;
+      <h1 style="font-family:var(--serif); font-size:26px; margin:0;">Bienvenue</h1>
+      <p class="muted">Crée un compte ou connecte-toi pour discuter.</p>
+      <div class="tabs">
+        <button class="tab-btn ${isSignup?'active':''}" onclick="S.authMode='signup'; render();">Créer un compte</button>
+        <button class="tab-btn ${!isSignup?'active':''}" onclick="S.authMode='login'; render();">Se connecter</button>
+      </div>
+      ${isSignup ? `
+        <div class="field"><label>Pseudo</label><input id="auth-username" maxlength="20" placeholder="ex : lucie92"></div>
+        <div class="field"><label>Nom de l'IA</label><input id="auth-ai" maxlength="20" placeholder="ex : Nova" value="Nova"></div>
+        <div class="field"><label>E-mail</label><input id="auth-email" type="email" placeholder="toi@exemple.com"></div>
+        <div class="field"><label>Numéro de téléphone (optionnel)</label><input id="auth-phone" type="tel" placeholder="06 12 34 56 78"></div>
+        <div class="field"><label>Mot de passe (6 caractères min.)</label><input id="auth-password" type="password" placeholder="••••••••"></div>
+      ` : `
+        <div class="field"><label>E-mail</label><input id="auth-email" type="email" placeholder="toi@exemple.com"></div>
+        <div class="field"><label>Mot de passe</label><input id="auth-password" type="password" placeholder="••••••••"></div>
+      `}
+      <p class="err" id="auth-error"></p>
+      <button class="btn-primary" id="auth-btn" onclick="${isSignup ? 'handleSignup()' : 'handleLogin()'}">${isSignup ? 'Commencer à discuter' : 'Se connecter'}</button>
+    </div>
+    <button class="link-small" onclick="openHelpSheet()">Centre d'aide</button>`;
 }
 
-async function createAccount(){
-  const username = document.getElementById('in-user').value.trim();
-  const aiName = document.getElementById('in-ai').value.trim() || 'Nova';
-  const errEl = document.getElementById('setup-error');
-  const btn = document.getElementById('setup-btn');
-  if(!username){ errEl.textContent = 'Choisis un pseudo.'; return; }
+function authErr(code){
+  const map = {
+    'auth/email-already-in-use': 'Un compte existe déjà avec cet e-mail.',
+    'auth/invalid-email': "Adresse e-mail invalide.",
+    'auth/weak-password': 'Mot de passe trop court (6 caractères min).',
+    'auth/user-not-found': 'Aucun compte avec cet e-mail.',
+    'auth/wrong-password': 'Mot de passe incorrect.',
+    'auth/invalid-credential': 'E-mail ou mot de passe incorrect.',
+    'auth/too-many-requests': 'Trop de tentatives, réessaie plus tard.',
+  };
+  return map[code] || "Une erreur est survenue, réessaie.";
+}
+
+async function handleSignup(){
+  const username = document.getElementById('auth-username').value.trim();
+  const aiName = document.getElementById('auth-ai').value.trim() || 'Nova';
+  const email = document.getElementById('auth-email').value.trim();
+  const phone = document.getElementById('auth-phone').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-btn');
+  if(!username || !email || !password){ errEl.textContent = 'Remplis au moins pseudo, e-mail et mot de passe.'; return; }
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  const existing = await getConv(username);
-  if(existing){
-    errEl.textContent = 'Ce pseudo est déjà pris, choisis-en un autre.';
+  try{
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
+    const conv = {
+      uid: cred.user.uid, username, email, phone, aiName, status:'answered',
+      messages:[{id:crypto.randomUUID(), role:'ai', type:'text', content:`Salut ${username}, je suis ${aiName}. Pose-moi une question !`, ts:Date.now()}]
+    };
+    await saveConv(conv);
+    await loadClientSession(cred.user);
+  }catch(e){
+    errEl.textContent = authErr(e.code);
     btn.disabled = false; btn.textContent = 'Commencer à discuter';
-    return;
   }
-  const conv = { username, aiName, status:'answered', messages:[
-    {id:crypto.randomUUID(), role:'ai', type:'text', content:`Salut ${username}, je suis ${aiName}. Pose-moi une question !`, ts:Date.now()}
-  ]};
-  const ok = await saveConv(conv);
-  if(!ok){ btn.disabled=false; btn.textContent='Commencer à discuter'; return; }
-  localStorage.setItem('my-username', username);
-  S.myUsername = username; S.myConv = conv; S.view = 'client-chat';
-  render(); listenClient();
+}
+
+async function handleLogin(){
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-btn');
+  if(!email || !password){ errEl.textContent = 'Renseigne ton e-mail et ton mot de passe.'; return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try{
+    const cred = await auth.signInWithEmailAndPassword(email, password);
+    await loadClientSession(cred.user);
+  }catch(e){
+    errEl.textContent = authErr(e.code);
+    btn.disabled = false; btn.textContent = 'Se connecter';
+  }
+}
+
+async function handleLogout(){
+  closeHelpSheet();
+  unsubAll();
+  await auth.signOut();
+  S.myUid = null; S.myConv = null; S.view = 'auth'; S.authMode='login';
+  render();
 }
 
 /* ---------------- CLIENT CHAT (temps réel) ---------------- */
 function listenClient(){
   unsubAll();
-  S.unsubClient = convRef(S.myUsername).onSnapshot((doc) => {
+  S.unsubClient = convRef(S.myUid).onSnapshot((doc) => {
     if(!doc.exists) return;
-    S.myConv = doc.data();
+    const fresh = doc.data();
+    if(S.myConv && fresh.messages.length > S.myConv.messages.length){
+      const last = fresh.messages[fresh.messages.length-1];
+      if(last.role === 'ai') maybeNotify(fresh.aiName, last.type==='image' ? 'a envoyé un dessin' : last.content);
+    }
+    S.myConv = fresh;
     if(S.view === 'client-chat') renderClientChat();
   });
 }
@@ -313,6 +436,7 @@ function renderClientChat(){
       <p class="ai-name">${esc(conv.aiName)}</p>
       <p class="ai-tag">connecté(e) en tant que ${esc(conv.username)}</p>
     </div>
+    ${notifBanner('client')}
     <div class="thread" id="thread">
       ${conv.messages.map(m => bubbleHTML(m, m.role==='user')).join('')}
     </div>
@@ -321,7 +445,7 @@ function renderClientChat(){
       <textarea id="client-input" rows="1" placeholder="Écris ton message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendClientMessage();}"></textarea>
       <button class="send-btn" onclick="sendClientMessage()">↑</button>
     </div>
-    <button class="link-small" onclick="resetClientAccount()">réinitialiser mon compte</button>`;
+    <button class="link-small" onclick="openHelpSheet()">Centre d'aide</button>`;
   const th = document.getElementById('thread'); if(th) th.scrollTop = th.scrollHeight;
 }
 
@@ -344,15 +468,60 @@ async function sendClientMessage(){
   S.myConv.status = 'pending';
   renderClientChat();
   await saveConv(S.myConv);
+  notifyOperators(S.myConv.username, text);
 }
 
-async function resetClientAccount(){
-  if(!confirm("Supprimer ton compte et repartir de zéro ?")) return;
-  unsubAll();
-  await deleteConv(S.myUsername);
-  localStorage.removeItem('my-username');
-  S.myUsername = null; S.myConv = null; S.view = 'role-chooser';
-  render();
+/* ---------------- HELP CENTER ---------------- */
+function openHelpSheet(){
+  const loggedIn = !!S.myUid;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop'; backdrop.id = 'help-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal-sheet">
+      <h4>centre d'aide</h4>
+      <button class="help-item" onclick="comingSoon('FAQ')">❓ Questions fréquentes</button>
+      <button class="help-item" onclick="openBugReport()">🐞 Signaler un bug</button>
+      <button class="help-item" onclick="comingSoon('Support')">💬 Contacter le support</button>
+      <button class="help-item" onclick="comingSoon('Conditions d\'utilisation')">📄 Conditions d'utilisation</button>
+      <button class="help-item" onclick="comingSoon('Confidentialité')">🔒 Confidentialité</button>
+      ${loggedIn ? `<button class="help-item danger" onclick="handleLogout()">🚪 Se déconnecter</button>` : ''}
+      <button class="help-item" onclick="closeHelpSheet(); S.view='operator-gate'; render();">🎭 Accès équipe</button>
+      <button class="btn-cancel" style="border-radius:10px; padding:11px; margin-top:4px;" onclick="closeHelpSheet()">Fermer</button>
+    </div>`;
+  document.body.appendChild(backdrop);
+}
+function closeHelpSheet(){ const b = document.getElementById('help-backdrop'); if(b) b.remove(); }
+function comingSoon(name){ showToast(name + " — bientôt disponible."); }
+
+function openBugReport(){
+  closeHelpSheet();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop'; backdrop.id = 'bug-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal-sheet">
+      <h4>signaler un bug</h4>
+      <textarea id="bug-text" class="help-textarea" placeholder="Décris ce qui ne fonctionne pas…"></textarea>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeBugReport()">annuler</button>
+        <button class="btn-send" id="bug-send" onclick="sendBugReport()">envoyer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+}
+function closeBugReport(){ const b = document.getElementById('bug-backdrop'); if(b) b.remove(); }
+async function sendBugReport(){
+  const text = document.getElementById('bug-text').value.trim();
+  if(!text) return;
+  const btn = document.getElementById('bug-send');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try{
+    await db.collection('bugreports').add({ text, from: S.myUid || 'anonyme', ts: Date.now() });
+    showToast("Merci, c'est envoyé !");
+    closeBugReport();
+  }catch(e){
+    showToast("Échec de l'envoi, réessaie.");
+    btn.disabled = false; btn.textContent = 'envoyer';
+  }
 }
 
 /* ---------------- OPERATOR GATE ---------------- */
@@ -363,16 +532,16 @@ function renderOperatorGate(){
       <p class="muted" style="font-family:var(--mono); letter-spacing:1px; text-transform:uppercase; font-size:11px;">accès restreint</p>
       <h1 style="font-family:var(--serif); font-size:24px; margin:0;">Coulisses</h1>
       <div class="field"><label>Code d'accès</label><input id="passcode" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPasscode()"></div>
-      <p class="muted" id="gate-error" style="color:var(--stage-red); min-height:16px;"></p>
+      <p class="err" id="gate-error"></p>
       <button class="btn-primary" onclick="checkPasscode()">Entrer</button>
-      <button class="btn-ghost" onclick="S.view='role-chooser'; render();">← retour</button>
+      <button class="btn-ghost" onclick="S.view = S.myUid ? 'client-chat' : 'auth'; render();">← retour</button>
       <p class="muted" style="max-width:280px;">Note : ce code n'est qu'un filtre simple, pas une vraie sécurité — n'y mets rien de confidentiel.</p>
     </div>`;
 }
 function checkPasscode(){
   const val = document.getElementById('passcode').value;
   if(val === OPERATOR_PASSCODE){
-    S.operatorAuthed = true; S.view = 'operator-dashboard'; render(); listenDashboard();
+    S.view = 'operator-dashboard'; render(); listenDashboard();
   } else {
     document.getElementById('gate-error').textContent = 'Code incorrect.';
   }
@@ -380,9 +549,18 @@ function checkPasscode(){
 
 /* ---------------- OPERATOR DASHBOARD (temps réel) ---------------- */
 function listenDashboard(){
-  unsubAll();
+  if(S.unsubDash) S.unsubDash();
   S.unsubDash = db.collection('conversations').onSnapshot((snap) => {
     const convs = snap.docs.map(d => d.data());
+    convs.forEach(c => {
+      const len = c.messages.length;
+      const prev = S.dashPrevCounts.get(c.uid);
+      if(prev !== undefined && len > prev){
+        const last = c.messages[len-1];
+        if(last.role === 'user') maybeNotify('Nouveau message', `${c.username} : ${last.type==='image' ? 'a envoyé un dessin' : last.content}`);
+      }
+      S.dashPrevCounts.set(c.uid, len);
+    });
     convs.sort((a,b) => {
       if(a.status==='pending' && b.status!=='pending') return -1;
       if(b.status==='pending' && a.status!=='pending') return 1;
@@ -399,7 +577,7 @@ function renderOperatorDashboard(){
   const rows = S.dashboard.map(c => {
     const last = c.messages[c.messages.length-1];
     const preview = last ? (last.type==='image' ? '📎 dessin' : last.content) : '';
-    return `<div class="conv-row" onclick="openThread('${esc(c.username)}')">
+    return `<div class="conv-row" onclick="openThread('${c.uid}')">
       <div class="conv-avatar">${esc(c.username[0]||'?').toUpperCase()}</div>
       <div class="conv-info">
         <div class="conv-name">${esc(c.username)} <span class="muted">→ ${esc(c.aiName)}</span></div>
@@ -411,13 +589,16 @@ function renderOperatorDashboard(){
   app.innerHTML = `
     <div class="console-header">
       <span class="console-title">RÉGIE · ${S.dashboard.length} conversation(s)</span>
-      <button class="back-btn" onclick="unsubAll(); S.view='role-chooser'; render();">quitter</button>
+      <div style="display:flex; gap:8px; align-items:center;">
+        ${typeof Notification!=='undefined' && Notification.permission==='default' ? `<button class="icon-btn" onclick="enableNotifs('operator')" title="Activer les notifications">🔔</button>` : ''}
+        <button class="back-btn" onclick="unsubAll(); S.view = S.myUid ? 'client-chat' : 'auth'; render();">quitter</button>
+      </div>
     </div>
     <div class="conv-list">${rows || "<div class=\"empty-state\">Personne n'a encore ouvert le rideau.<br>La liste se met à jour toute seule.</div>"}</div>`;
 }
 
-function openThread(username){
-  S.openConvUsername = username;
+function openThread(uid){
+  S.openConvUid = uid;
   S.view = 'operator-thread';
   render();
   listenThread();
@@ -426,9 +607,9 @@ function openThread(username){
 /* ---------------- OPERATOR THREAD (temps réel) ---------------- */
 function listenThread(){
   if(S.unsubThread) S.unsubThread();
-  S.unsubThread = convRef(S.openConvUsername).onSnapshot((doc) => {
+  S.unsubThread = convRef(S.openConvUid).onSnapshot((doc) => {
     if(!doc.exists) return;
-    const idx = S.dashboard.findIndex(c => c.username === S.openConvUsername);
+    const idx = S.dashboard.findIndex(c => c.uid === S.openConvUid);
     if(idx>-1) S.dashboard[idx] = doc.data(); else S.dashboard.push(doc.data());
     if(S.view === 'operator-thread') renderOperatorThread();
   });
@@ -436,13 +617,13 @@ function listenThread(){
 
 function renderOperatorThread(){
   setBodyTheme('backstage');
-  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  const conv = S.dashboard.find(c => c.uid === S.openConvUid);
   if(!conv){ app.innerHTML = `<div class="center-screen"><span class="spinner"></span></div>`; return; }
   app.innerHTML = `
     <div class="thread-header">
       <button class="back-btn" onclick="if(S.unsubThread)S.unsubThread(); S.view='operator-dashboard'; render(); listenDashboard();">←</button>
       <span class="name">${esc(conv.username)} <span class="muted">parle à ${esc(conv.aiName)}</span></span>
-      <button class="delete-btn" onclick="removeThread('${esc(conv.username)}')">supprimer</button>
+      <button class="delete-btn" onclick="removeThread('${conv.uid}')">supprimer</button>
     </div>
     <div class="thread" id="thread">
       ${conv.messages.map(m => bubbleHTML(m, m.role==='ai')).join('')}
@@ -458,10 +639,11 @@ function renderOperatorThread(){
   const th = document.getElementById('thread'); if(th) th.scrollTop = th.scrollHeight;
 }
 
-async function removeThread(username){
-  if(!confirm(`Supprimer la conversation avec ${username} ?`)) return;
+async function removeThread(uid){
+  const conv = S.dashboard.find(c => c.uid === uid);
+  if(!confirm(`Supprimer la conversation avec ${conv ? conv.username : ''} ?`)) return;
   if(S.unsubThread) S.unsubThread();
-  await deleteConv(username);
+  await deleteConv(uid);
   S.view = 'operator-dashboard'; render(); listenDashboard();
 }
 
@@ -469,18 +651,19 @@ async function sendOperatorMessage(){
   const input = document.getElementById('op-input');
   const text = input.value.trim();
   if(!text) return;
-  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  const conv = S.dashboard.find(c => c.uid === S.openConvUid);
   if(!conv) return;
   conv.messages.push({id:crypto.randomUUID(), role:'ai', type:'text', content:text, ts:Date.now()});
   conv.status = 'answered';
   input.value = '';
   renderOperatorThread();
   await saveConv(conv);
+  notifyClient(conv, text);
 }
 
 async function requestAISuggestion(){
   const btn = document.getElementById('assist-btn');
-  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  const conv = S.dashboard.find(c => c.uid === S.openConvUid);
   if(!conv) return;
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> réflexion…';
   try{
@@ -489,10 +672,8 @@ async function requestAISuggestion(){
     }));
     if(history.length===0 || history[history.length-1].role!=='user'){
       showToast("Attends un message du visiteur d'abord.");
-      btn.disabled=false; btn.innerHTML='✨ suggérer avec l\'IA'; return;
+      btn.disabled=false; btn.innerHTML="✨ suggérer avec l'IA"; return;
     }
-    // Appelle notre propre fonction serverless (/api/suggest) plutôt que l'API Anthropic
-    // directement, pour ne jamais exposer de clé API dans le navigateur. Voir README.md.
     const response = await fetch("/api/suggest", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -508,7 +689,7 @@ async function requestAISuggestion(){
   }catch(e){
     showToast("La suggestion IA a échoué — vérifie ta connexion, ou ta clé API si tu en utilises une côté serveur.");
   }
-  btn.disabled = false; btn.innerHTML = '✨ suggérer avec l\'IA';
+  btn.disabled = false; btn.innerHTML = "✨ suggérer avec l'IA";
 }
 
 /* ---------------- DRAW MODAL (paint-like) ---------------- */
@@ -564,13 +745,14 @@ function setupCanvas(){
 async function sendDrawing(){
   const cv = document.getElementById('paint-canvas');
   const dataUrl = cv.toDataURL('image/png');
-  const conv = S.dashboard.find(c => c.username === S.openConvUsername);
+  const conv = S.dashboard.find(c => c.uid === S.openConvUid);
   if(!conv) return;
   conv.messages.push({id:crypto.randomUUID(), role:'ai', type:'image', content:dataUrl, ts:Date.now()});
   conv.status = 'answered';
   closeDrawModal();
   renderOperatorThread();
   await saveConv(conv);
+  notifyClient(conv, 'a envoyé un dessin');
 }
 
 init();

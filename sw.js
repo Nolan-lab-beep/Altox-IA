@@ -1,3 +1,27 @@
+/* ============================================================
+   Notifications push (optionnel) : colle ICI la même config
+   Firebase que dans index.html, pour que les notifications
+   s'affichent même quand l'app est en arrière-plan.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "COLLE_TA_CLE_ICI",
+  authDomain: "TON-PROJET.firebaseapp.com",
+  projectId: "TON-PROJET",
+  storageBucket: "TON-PROJET.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
+};
+
+try{
+  if(FIREBASE_CONFIG.apiKey !== "COLLE_TA_CLE_ICI"){
+    importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+    importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firebase.messaging(); // active l'affichage automatique des notifications reçues en arrière-plan
+  }
+}catch(e){ /* config pas encore prête : le reste du service worker marche quand même */ }
+
+/* ---------------- cache hors-ligne (PWA) ---------------- */
 const CACHE_NAME = 'regisseur-v1';
 const APP_SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
 
