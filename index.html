@@ -403,7 +403,7 @@ function renderOperatorDashboard(){
       <span class="console-title">RÉGIE · ${S.dashboard.length} conversation(s)</span>
       <button class="back-btn" onclick="unsubAll(); S.view='role-chooser'; render();">quitter</button>
     </div>
-    <div class="conv-list">${rows || '<div class="empty-state">Personne n\\'a encore ouvert le rideau.<br>La liste se met à jour toute seule.</div>'}</div>`;
+    <div class="conv-list">${rows || "<div class=\"empty-state\">Personne n'a encore ouvert le rideau.<br>La liste se met à jour toute seule.</div>"}</div>`;
 }
 
 function openThread(username){
@@ -479,7 +479,7 @@ async function requestAISuggestion(){
     }));
     if(history.length===0 || history[history.length-1].role!=='user'){
       showToast("Attends un message du visiteur d'abord.");
-      btn.disabled=false; btn.innerHTML='✨ suggérer avec l\\'IA'; return;
+      btn.disabled=false; btn.innerHTML='✨ suggérer avec l\'IA'; return;
     }
     // Appelle notre propre fonction serverless (/api/suggest) plutôt que l'API Anthropic
     // directement, pour ne jamais exposer de clé API dans le navigateur. Voir README.md.
@@ -492,13 +492,13 @@ async function requestAISuggestion(){
       })
     });
     const data = await response.json();
-    const text = (data.content||[]).map(b=>b.text||'').join('\\n').trim();
+    const text = (data.content||[]).map(b=>b.text||'').join('\n').trim();
     const input = document.getElementById('op-input');
     if(input) input.value = text || "(l'IA n'a rien renvoyé, réessaie)";
   }catch(e){
     showToast("La suggestion IA a échoué — vérifie ta connexion, ou ta clé API si tu en utilises une côté serveur.");
   }
-  btn.disabled = false; btn.innerHTML = '✨ suggérer avec l\\'IA';
+  btn.disabled = false; btn.innerHTML = '✨ suggérer avec l\'IA';
 }
 
 /* ---------------- DRAW MODAL (paint-like) ---------------- */
