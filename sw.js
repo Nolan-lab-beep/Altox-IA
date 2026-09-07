@@ -45,6 +45,11 @@ self.addEventListener('activate', (event) => {
 // so the app shell still opens without a connection.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  // Ne touche qu'aux fichiers de l'app elle-même. Laisse passer tout le reste
+  // (Firestore, Auth, Cloud Messaging...) sans y toucher — sinon ça casse le
+  // chat en temps réel et les connexions Firebase.
+  if (url.origin !== self.location.origin) return;
   event.respondWith(
     fetch(event.request)
       .then((res) => {
