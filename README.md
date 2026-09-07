@@ -1,4 +1,4 @@
-# Régisseur — le chat IA que tu joues toi-même
+# Altox-ia — le chat IA que tu joues toi-même
 
 Une PWA (application web installable) : un visiteur crée un compte et discute avec
 « l'IA », et toi (en coulisses, avec un code d'accès) tu réponds à sa place — en texte,
