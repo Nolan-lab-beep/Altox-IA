@@ -7,7 +7,6 @@
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#12182B">
-<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -157,16 +156,15 @@
    Active aussi "Authentication → Sign-in method → E-mail/Mot de passe".
    ============================================================ */
 const firebaseConfig = {
-  apiKey: "AIzaSyBM1NbSfQpQJZAYVqTcoL7xvTyDvSFpv2c",
-  authDomain: "altox-7c048.firebaseapp.com",
-  projectId: "altox-7c048",
-  storageBucket: "altox-7c048.firebasestorage.app",
-  messagingSenderId: "986483222197",
-  appId: "1:986483222197:web:cd92174af9e4da5cb340fc",
-  measurementId: "G-1MC84YG81K"
+  apiKey: "COLLE_TA_CLE_ICI",
+  authDomain: "TON-PROJET.firebaseapp.com",
+  projectId: "TON-PROJET",
+  storageBucket: "TON-PROJET.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
 };
 
-const OPERATOR_PASSCODE = "100823"; // change ce mot de passe si tu veux
+const OPERATOR_PASSCODE = "coulisses"; // change ce mot de passe si tu veux
 
 // Clé VAPID pour les notifications push réelles (optionnel).
 // Console Firebase → Paramètres du projet → Cloud Messaging → Web Push certificates → Générer une paire de clés.
@@ -275,7 +273,7 @@ async function notifyClient(conv, bodyText){
 function maybeNotify(title, body){
   if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   if(!document.hidden) return;
-  try{ new Notification(title, {body, icon:'./icons/icon-192.png'}); }catch(e){}
+  try{ new Notification(title, {body}); }catch(e){}
 }
 
 /* ---------------- init / auth ---------------- */

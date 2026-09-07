@@ -23,7 +23,7 @@ try{
 
 /* ---------------- cache hors-ligne (PWA) ---------------- */
 const CACHE_NAME = 'regisseur-v1';
-const APP_SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
+const APP_SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
